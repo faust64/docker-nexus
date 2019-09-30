@@ -1,0 +1,25 @@
+apiVersion: v1
+kind: Template
+labels:
+  app: nexus
+  template: nexus-imagestream
+metadata:
+  annotations:
+    description: Nexus - ImageStream
+      see https://github.com/faust64/docker-nexus
+    iconClass: icon-openshift
+    openshift.io/display-name: Nexus
+    tags: nexus
+  name: nexus-imagestream
+objects:
+- apiVersion: v1
+  kind: ImageStream
+  metadata:
+    annotations:
+      description: Keeps track of changes in Wsweet Nexus image
+    name: nexus-${FRONTNAME}
+parameters:
+- name: FRONTNAME
+  description: The name identifier assigned to objects defined in this template
+  displayName: Name
+  value: demo

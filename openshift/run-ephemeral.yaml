@@ -1,0 +1,197 @@
+apiVersion: v1
+kind: Template
+labels:
+  app: nexus
+  template: nexus-ephemeral
+metadata:
+  annotations:
+    description: Nexus - ephemeral
+      see https://github.com/faust64/docker-nexus
+    iconClass: icon-openshift
+    openshift.io/display-name: Nexus
+    tags: nexus
+  name: nexus-ephemeral
+objects:
+- apiVersion: v1
+  kind: DeploymentConfig
+  metadata:
+    labels:
+      name: nexus-${FRONTNAME}
+    name: nexus-${FRONTNAME}
+  spec:
+    replicas: 1
+    selector:
+      name: nexus-${FRONTNAME}
+    strategy:
+      recreateParams:
+        timeoutSeconds: 900
+      type: Recreate
+    template:
+      metadata:
+        labels:
+          name: nexus-${FRONTNAME}
+      spec:
+        containers:
+        - env:
+          - name: CONTEXT_PATH
+            value: /
+          - name: HOME
+            value: /nexus-data
+          - name: INSTALL4J_ADD_VM_PARAMS
+            value: ${JAVA_ARGS} -Djava.util.prefs.userRoot=/nexus-data/javaprefs
+          - name: NEXUS_ADMIN_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                key: admin-password
+                name: nexus-admin-${FRONTNAME}
+          - name: NEXUS_ARTIFACTS_SERVICE_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                key: password
+                name: nexus-artifacts-${FRONTNAME}
+          - name: NEXUS_DEPLOYER_SERVICE_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                key: password
+                name: nexus-deployer-${FRONTNAME}
+          - name: NEXUS_JENKINS_ARTIFACTS_ACCOUNT
+            valueFrom:
+              secretKeyRef:
+                key: username
+                name: nexus-artifacts-${FRONTNAME}
+          - name: NEXUS_JENKINS_DEPLOYER_ACCOUNT
+            valueFrom:
+              secretKeyRef:
+                key: username
+                name: nexus-deployer-${FRONTNAME}
+          - name: TZ
+            value: Europe/Paris
+          image: ' '
+          imagePullPolicy: IfNotPresent
+          livenessProbe:
+            exec:
+              command:
+              - sh
+              - -c
+              - reply=`curl -s -o /dev/null -w %{http_code} "http://127.0.0.1:8081/static/css/nexus-content.css"`;
+                if test "$reply" -lt 200 -o "$reply" -ge 400; then exit 1; elif ! ls
+                /nexus-data; then exit 2; fi
+            failureThreshold: 20
+            initialDelaySeconds: 180
+            periodSeconds: 30
+            successThreshold: 1
+            timeoutSeconds: 1
+          name: nexus
+          ports:
+          - containerPort: 8081
+            protocol: TCP
+          readinessProbe:
+            failureThreshold: 20
+            httpGet:
+              path: /static/css/nexus-content.css
+              port: 8081
+              scheme: HTTP
+            initialDelaySeconds: 180
+            periodSeconds: 30
+            successThreshold: 1
+            timeoutSeconds: 1
+          resources:
+            limits:
+              cpu: ${CPU_LIMIT}
+              memory: ${MEMORY_LIMIT}
+            requests:
+              cpu: ${CPU_REQUEST}
+              memory: ${MEMORY_REQUEST}
+          terminationMessagePath: /dev/termination-log
+          volumeMounts:
+          - mountPath: /nexus-data
+            name: data
+          - mountPath: /nexus-data/log
+            name: logs
+        dnsPolicy: ClusterFirst
+        restartPolicy: Always
+        securityContext: {}
+        terminationGracePeriodSeconds: 30
+        volumes:
+        - emptyDir: {}
+          name: logs
+        - emptyDir: {}
+          name: data
+    test: false
+    triggers:
+    - type: ConfigChange
+    - imageChangeParams:
+        automatic: true
+        containerNames:
+        - nexus
+        from:
+          kind: ImageStreamTag
+          name: nexus-${NEXUS_IMAGE_FRONTNAME}:${NEXUS_IMAGE_TAG}
+      type: ImageChange
+- apiVersion: v1
+  kind: Service
+  metadata:
+    name: nexus-${FRONTNAME}
+  spec:
+    ports:
+    - name: http
+      port: 8081
+      protocol: TCP
+      targetPort: 8081
+    selector:
+      name: nexus-${FRONTNAME}
+    type: ClusterIP
+- apiVersion: v1
+  kind: Route
+  metadata:
+    annotations:
+      haproxy.router.openshift.io/timeout: 5m
+    name: nexus-${FRONTNAME}
+  spec:
+    host: nexus.${WSWEET_ROOT_DOMAIN}
+    tls:
+      insecureEdgeTerminationPolicy: Redirect
+      termination: edge
+    to:
+      kind: Service
+      name: nexus-${FRONTNAME}
+parameters:
+- name: FRONTNAME
+  description: The name identifier assigned to objects defined in this template
+  displayName: Name
+  value: demo
+- description: CPU Limit
+  displayName: Nexus CPU Limit
+  name: CPU_LIMIT
+  value: 500m
+- description: CPU Request
+  displayName: Nexus CPU Request
+  name: CPU_REQUEST
+  value: 200m
+- description: Java Arguments
+  displayName: JAVA_ARGS
+  name: JAVA_ARGS
+  value: -Xms1400m -Xmx1400m -XX:MaxDirectMemorySize=2g
+- description: Memory Limit
+  displayName: Nexus Memory Limit
+  name: MEMORY_LIMIT
+  value: 4200Mi
+- description: Memory Request
+  displayName: Nexus Memory Request
+  name: MEMORY_REQUEST
+  value: 3800Mi
+- name: NEXUS_IMAGE_FRONTNAME
+  description: The name assigned to ImageStream object defined in corresponding template
+  displayName: Name
+  required: true
+  value: wsweet
+- name: NEXUS_IMAGE_TAG
+  description: The ImageStreamTag we should pull images from
+  displayName: Tag
+  required: true
+  value: master
+- name: WSWEET_ROOT_DOMAIN
+  description: Wsweet Root Domain
+  displayName: Wsweet Root Domain
+  required: true
+  value: demo.local
