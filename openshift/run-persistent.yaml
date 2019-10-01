@@ -136,7 +136,7 @@ objects:
         - nexus
         from:
           kind: ImageStreamTag
-          name: nexus-${NEXUS_IMAGE_FRONTNAME}:${NEXUS_IMAGE_TAG}
+          name: ${NEXUS_IMAGE_FRONTNAME}:${NEXUS_IMAGE_TAG}
       type: ImageChange
 - apiVersion: v1
   kind: Service
@@ -158,7 +158,7 @@ objects:
       haproxy.router.openshift.io/timeout: 5m
     name: nexus-${FRONTNAME}
   spec:
-    host: nexus.${WSWEET_ROOT_DOMAIN}
+    host: nexus.${ROOT_DOMAIN}
     tls:
       insecureEdgeTerminationPolicy: Redirect
       termination: edge
@@ -194,7 +194,7 @@ parameters:
   description: The name assigned to ImageStream object defined in corresponding template
   displayName: Name
   required: true
-  value: wsweet
+  value: nexus
 - name: NEXUS_IMAGE_TAG
   description: The ImageStreamTag we should pull images from
   displayName: Tag
@@ -204,8 +204,8 @@ parameters:
   displayName: Volume capacity
   name: NEXUS_VOLUME_CAPACITY
   value: 42Gi
-- name: WSWEET_ROOT_DOMAIN
-  description: Wsweet Root Domain
-  displayName: Wsweet Root Domain
+- name: ROOT_DOMAIN
+  description: OpenShift Root Domain
+  displayName: OpenShift Root Domain
   required: true
   value: demo.local

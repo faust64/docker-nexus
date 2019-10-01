@@ -16,16 +16,16 @@ objects:
   kind: BuildConfig
   metadata:
     annotations:
-      description: Builds Wsweet Nexus images
+      description: Builds Nexus images
     labels:
-      name: nexus-${FRONTNAME}-${NEXUS_REPOSITORY_REF}
-    name: nexus-${FRONTNAME}-${NEXUS_REPOSITORY_REF}
+      name: nexus-${NEXUS_REPOSITORY_REF}
+    name: nexus-${NEXUS_REPOSITORY_REF}
   spec:
     failedBuildsHistoryLimit: 1
     output:
       to:
         kind: ImageStreamTag
-        name: nexus-${FRONTNAME}:${NEXUS_REPOSITORY_REF}
+        name: nexus:${NEXUS_REPOSITORY_REF}
     resources:
       limits:
         cpu: 400m
@@ -48,10 +48,6 @@ objects:
     - type: ConfigChange
     - type: ImageChange
 parameters:
-- name: FRONTNAME
-  description: The name identifier assigned to objects defined in this template
-  displayName: Name
-  value: demo
 - name: NEXUS_REPOSITORY_REF
   description: Set this to a branch name, tag or other ref of your repository if you are not using the default branch
   displayName: Git Reference
