@@ -27,17 +27,15 @@ run:
 
 .PHONY: ocbuild
 ocbuild: occheck
-	oc process -f openshift/imagestream.yaml -p FRONTNAME=wsweet | oc apply -f-
+	oc process -f openshift/imagestream.yaml | oc apply -f-
 	BRANCH=`git rev-parse --abbrev-ref HEAD`; \
 	if test "$$GIT_DEPLOYMENT_TOKEN"; then \
 	    oc process -f openshift/build-with-secret.yaml \
-		-p "FRONTNAME=wsweet" \
 		-p "GIT_DEPLOYMENT_TOKEN=$$GIT_DEPLOYMENT_TOKEN" \
 		-p "NEXUS_REPOSITORY_REF=$$BRANCH" \
 		| oc apply -f-; \
 	else \
 	    oc process -f openshift/build.yaml \
-		-p "FRONTNAME=wsweet" \
 		-p "NEXUS_REPOSITORY_REF=$$BRANCH" \
 		| oc apply -f-; \
 	fi
@@ -48,5 +46,5 @@ occheck:
 
 .PHONY: occlean
 occlean: occheck
-	oc process -f openshift/run-persistent.yaml -p FRONTNAME=wsweet | oc delete -f- || true
-	oc process -f openshift/secret.yaml -p FRONTNAME=wsweet | oc delete -f- || true
+	oc process -f openshift/run-persistent.yaml -p FRONTNAME=demo | oc delete -f- || true
+	oc process -f openshift/secret.yaml -p FRONTNAME=demo | oc delete -f- || true
