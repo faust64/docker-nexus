@@ -2,8 +2,7 @@
 
 OpenShift-friendly
 
-Custom blend of https://github.com/Accenture/adop-nexus and
-https://github.com/sonatype-nexus-community/nexus-repository-apt/
+Based on https://github.com/Accenture/adop-nexus
 
 Build with:
 ```

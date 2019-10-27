@@ -1,21 +1,9 @@
-# Build Nexus-Repository-APT Plugin
-
-FROM maven:3-jdk-8-alpine AS build
-ENV NEXUS_VERSION=3.16.2 \
-    NEXUS_BUILD=01
-COPY config/nexus-repository-apt /nexus-repository-apt/
-RUN cd /nexus-repository-apt/ \
-    && mvn
-
-#    && sed -i "s|3.13.0-01|${NEXUS_VERSION}-${NEXUS_BUILD}|" pom.xml
-
-FROM sonatype/nexus3:3.16.2
+FROM sonatype/nexus3:3.19.1
 
 # Nexus Repository Manager image for OpenShift Origin
 
-ENV APT_VERSION=1.0.7 \
-    NEXUS_BUILD=01 \
-    NEXUS_VERSION=3.16.2 \
+ENV NEXUS_BUILD=01 \
+    NEXUS_VERSION=3.19.1 \
     PATH=/root/.sdkman/candidates/groovy/2.4.15/bin:${PATH}
 
 LABEL io.k8s.description="Nexus Repository Manager for OpenShift." \
@@ -28,23 +16,20 @@ LABEL io.k8s.description="Nexus Repository Manager for OpenShift." \
       version="${NEXUS_VERSION}-${NEXUS_BUILD}"
 
 USER root
-RUN if test "$DO_UPGRADE"; then \
-	yum -y upgrade; \
+RUN set -x && if test "$DO_UPGRADE"; then \
+	dnf -y upgrade; \
     fi \
-    && yum install -y zip unzip \
-    && yum install -y which \
+    && dnf install -y zip unzip which \
     && curl -s get.sdkman.io | bash \
     && source "$HOME/.sdkman/bin/sdkman-init.sh" \
     && mkdir -p /resources /root/.groovy \
-    && yes | /bin/bash -l -c "sdk install groovy 2.4.15" \
-    && mkdir -p ${SONATYPE_DIR}/nexus/system/net/staticsnow/nexus-repository-apt/${APT_VERSION}/ \
-    && sed -i "s@nexus-repository-maven</feature>@nexus-repository-maven</feature>\n        <feature prerequisite=\"false\" dependency=\"false\" version=\"${APT_VERSION}\">nexus-repository-apt</feature>@g" ${SONATYPE_DIR}/nexus/system/org/sonatype/nexus/assemblies/nexus-core-feature/${NEXUS_VERSION}-${NEXUS_BUILD}/nexus-core-feature-${NEXUS_VERSION}-${NEXUS_BUILD}-features.xml \
-    && sed -i "s@<feature name=\"nexus-repository-maven\"@<feature name=\"nexus-repository-apt\" description=\"net.staticsnow:nexus-repository-apt\" version=\"${APT_VERSION}\">\n        <details>net.staticsnow:nexus-repository-apt</details>\n        <bundle>mvn:net.staticsnow/nexus-repository-apt/${APT_VERSION}</bundle>\n        <bundle>mvn:org.apache.commons/commons-compress/1.18</bundle>\n        <bundle>mvn:org.tukaani/xz/1.8</bundle>\n    </feature>\n    <feature name=\"nexus-repository-maven\"@g" ${SONATYPE_DIR}/nexus/system/org/sonatype/nexus/assemblies/nexus-core-feature/${NEXUS_VERSION}-${NEXUS_BUILD}/nexus-core-feature-${NEXUS_VERSION}-${NEXUS_BUILD}-features.xml
+    && yes | /bin/bash -l -c "source $HOME/.sdkman/bin/sdkman-init.sh && sdk install groovy 2.4.15" \
+    && rm -rf /var/cache/yum /usr/share/doc /usr/share/man \
+    && unset HTTP_PROXY HTTPS_PROXY NO_PROXY DO_UPGRADE http_proxy https_proxy
 
 COPY config/*.sh /usr/local/bin/
 COPY config/groovy /resources/conf/
 COPY config/groovy/grapeConfig.xml /root/.groovy/
-COPY --from=build /nexus-repository-apt/target/nexus-repository-apt-${APT_VERSION}.jar ${SONATYPE_DIR}/nexus/system/net/staticsnow/nexus-repository-apt/${APT_VERSION}/
 
 RUN grape install org.sonatype.nexus nexus-rest-client 3.6.0-02 \
     && grape install org.sonatype.nexus nexus-rest-jackson2 3.6.0-02 \
