@@ -2,7 +2,9 @@ FROM sonatype/nexus3:3.19.1
 
 # Nexus Repository Manager image for OpenShift Origin
 
-ENV NEXUS_BUILD=01 \
+ENV DI_REPO=https://github.com/Yelp/dumb-init/releases/download \
+    DI_VERSION=1.2.2 \
+    NEXUS_BUILD=01 \
     NEXUS_VERSION=3.19.1 \
     PATH=/root/.sdkman/candidates/groovy/2.4.15/bin:${PATH}
 
@@ -22,6 +24,9 @@ RUN set -x && if test "$DO_UPGRADE"; then \
     && dnf install -y zip unzip which \
     && curl -s get.sdkman.io | bash \
     && source "$HOME/.sdkman/bin/sdkman-init.sh" \
+    && curl -fsL ${DI_REPO}/v${DI_VERSION}/dumb-init_${DI_VERSION}_amd64 \
+	-o /bin/dumb-init \
+    && chmod +x /bin/dumb-init \
     && mkdir -p /resources /root/.groovy \
     && yes | /bin/bash -l -c "source $HOME/.sdkman/bin/sdkman-init.sh && sdk install groovy 2.4.15" \
     && rm -rf /var/cache/yum /usr/share/doc /usr/share/man \
@@ -54,5 +59,5 @@ RUN grape install org.sonatype.nexus nexus-rest-client 3.6.0-02 \
     && chown -R nexus ${SONATYPE_DIR}/nexus/etc /root/.groovy
 
 USER nexus
-ENTRYPOINT ["/usr/local/bin/nexus.sh"]
+ENTRYPOINT ["/bin/dumb-init","--","/usr/local/bin/nexus.sh"]
 CMD ["sh", "-c", "${SONATYPE_DIR}/start-nexus-repository-manager.sh"]

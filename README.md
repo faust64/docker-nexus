@@ -64,3 +64,4 @@ You can also set the following mount points by passing the `-v /host:/container`
 |  Volume mount point    | Description              |
 | :--------------------- | ------------------------ |
 |  `/nexus`              | Nexus Persisting Data    |
+|  `/certs`              | Nexus CAs to load        |

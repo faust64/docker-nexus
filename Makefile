@@ -46,5 +46,5 @@ occheck:
 
 .PHONY: occlean
 occlean: occheck
-	oc process -f openshift/run-persistent.yaml -p FRONTNAME=demo | oc delete -f- || true
-	oc process -f openshift/secret.yaml -p FRONTNAME=demo | oc delete -f- || true
+	oc process -f openshift/run-persistent.yaml | oc delete -f- || true
+	oc process -f openshift/secret.yaml | oc delete -f- || true
