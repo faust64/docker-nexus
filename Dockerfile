@@ -1,11 +1,11 @@
-FROM sonatype/nexus3:3.19.1
+FROM sonatype/nexus3:3.24.0
 
 # Nexus Repository Manager image for OpenShift Origin
 
 ENV DI_REPO=https://github.com/Yelp/dumb-init/releases/download \
     DI_VERSION=1.2.2 \
     NEXUS_BUILD=01 \
-    NEXUS_VERSION=3.19.1 \
+    NEXUS_VERSION=3.24.0 \
     PATH=/root/.sdkman/candidates/groovy/2.4.15/bin:${PATH}
 
 LABEL io.k8s.description="Nexus Repository Manager for OpenShift." \
