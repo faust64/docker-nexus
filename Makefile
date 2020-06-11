@@ -1,20 +1,18 @@
 SKIP_SQUASH?=1
 
+-include Makefile.cust
+
 .PHONY: build
 build:
 	SKIP_SQUASH=$(SKIP_SQUASH) hack/build.sh
+
 .PHONY: test
 test:
 	SKIP_SQUASH=$(SKIP_SQUASH) TAG_ON_SUCCESS=$(TAG_ON_SUCCESS) TEST_MODE=true hack/build.sh
 
+.PHONY: demo
 demo:
 	docker run -p8081:8081 \
-	     -e LDAP_ENABLED=true \
-	     -e LDAP_BIND_DN=cn=admin0,ou=users,dc=demo,dc=local \
-	     -e LDAP_BIND_PW=secret \
-	     -e LDAP_URI=ldap://172.17.0.1:389 \
-	     -e LDAP_BASE=dc=demo,dc=local \
-	     -e NEXUS_CUSTOM_ADMIN_ROLE=ldapAdmin \
 	     -e NEXUS_JENKINS_DEPLOYER_ACCOUNT=jk-deploy \
 	     -e NEXUS_JENKINS_ARTIFACTS_ACCOUNT=jk-artifacts \
 	     -e NEXUS_DEPLOYER_SERVICE_PASSWORD=secret \
@@ -22,6 +20,7 @@ demo:
 	     -e NEXUS_ADMIN_PASSWORD=admin4242 \
 	     ci/nexus
 
+.PHONY: run
 run:
 	docker run -p8081:8081 ci/nexus
 
