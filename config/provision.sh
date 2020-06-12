@@ -179,15 +179,6 @@ EOF
 #	fi
 #    fi
 #fi
-#if test -n "$NEXUS_CUSTOM_ADMIN_ROLE"; then
-#    echo " -- Creating Custom ADMIN role and mapping..."
-#    NEXUS_ADMIN_ROLE_CONFIG=$(jq -n -c \
-#	    --arg id "$NEXUS_CUSTOM_ADMIN_ROLE" \
-#	    --arg name "$NEXUS_CUSTOM_ADMIN_ROLE" \
-#	    '{id: $id, name: $name, description: "Administration_Role", privileges: ["nx-all"], roles: ["nx-admin"]}'
-#	)
-#    addAndRunScript insertRole resources/conf/insertrole.groovy "\$NEXUS_ADMIN_ROLE_CONFIG"
-#fi
 if test "$NEXUS_JENKINS_ARTIFACTS_ACCOUNT" -a "$NEXUS_ARTIFACTS_SERVICE_PASSWORD"; then
     if ! grep $NEXUS_JENKINS_ARTIFACTS_ACCOUNT \
 	    $NEXUS_DATA/accounts.provisionned >/dev/null 2>&1; then
@@ -229,7 +220,7 @@ if test "$NEXUS_JENKINS_DEPLOYER_ACCOUNT" -a "$NEXUS_DEPLOYER_SERVICE_PASSWORD";
 		-s -o /dev/null -w '%{http_code}' \
 		$nexus_host/service/rest/beta/security/users -d@- | grep ^200 >/dev/null; then
 	    echo successfully created user $NEXUS_JENKINS_ARTIFACTS_ACCOUNT
-	    echo $NEXUS_JENKINS_ARTIFACTS_ACCOUNT >$NEXUS_DATA/accounts.provisionned
+	    echo $NEXUS_JENKINS_ARTIFACTS_ACCOUNT >>$NEXUS_DATA/accounts.provisionned
 	else
 	    echo failed provisionning user $NEXUS_JENKINS_ARTIFACTS_ACCOUNT
 	fi
