@@ -1,0 +1,33 @@
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: docker-build
+  namespace: ci
+spec:
+  params:
+  - default: ""
+    description: Forces FROM in Dockerfile.
+    name: fromimage
+    type: string
+  resources:
+  - name: app-git
+    type: git
+  - name: app-image
+    type: image
+  tasks:
+  - name: build
+    params:
+    - name: fromimage
+      value: $(params.fromimage)
+    - name: tlsverify
+      value: "false"
+    resources:
+      inputs:
+      - name: source
+        resource: app-git
+      outputs:
+      - name: image
+        resource: app-image
+    taskRef:
+      kind: Task
+      name: buildah-docker-build

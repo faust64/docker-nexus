@@ -32,11 +32,11 @@ objects:
               }
               options { timeout(time: 160, unit: 'MINUTES') }
               parameters {
+                  string(defaultValue: 'master', description: 'Nexus Docker Image - Source Git Branch', name: 'buildBranch')
+                  string(defaultValue: 'master', description: 'Nexus Docker Image - Source Git Hash', name: 'buildHash')
+                  string(defaultValue: '${GIT_SOURCE_HOST}/${GIT_REPOSITORY}', description: 'Nexus Docker Image - Source Git Repository', name: 'buildRepo')
                   string(defaultValue: '3', description: 'Max Retry', name: 'jobMaxRetry')
                   string(defaultValue: '1', description: 'Retry Count', name: 'jobRetryCount')
-                  string(defaultValue: 'master', description: 'Nexus Docker Image - Source Git Branch', name: 'nexusBranch')
-                  string(defaultValue: 'master', description: 'Nexus Docker Image - Source Git Hash', name: 'nexusHash')
-                  string(defaultValue: '${GIT_SOURCE_HOST}/CI/docker-nexus.git', description: 'Nexus Docker Image - Source Git Repository', name: 'nexusRepo')
                   string(defaultValue: '${OPENSHIFT_ROUTED_DOMAIN}', description: 'CI Router Root Domain', name: 'rootDomain')
               }
               stages {
@@ -46,9 +46,9 @@ objects:
                               openshift.withCluster() {
                                   openshift.withProject() {
                                       echo "Using project: ${openshift.project()}"
-                                      echo "cleaning up previous assets for nexus-${frontName}-${params.nexusHash}"
-                                      openshift.selector("all", [ "${templateSel}": "${templateMark}-${params.nexusHash}" ]).delete()
-                                      openshift.selector("secrets", [ "${templateSel}": "${templateMark}-${params.nexusHash}" ]).delete()
+                                      echo "cleaning up previous assets for nexus-${frontName}-${params.buildHash}"
+                                      openshift.selector("all", [ "${templateSel}": "${templateMark}-${params.buildHash}" ]).delete()
+                                      openshift.selector("secrets", [ "${templateSel}": "${templateMark}-${params.buildHash}" ]).delete()
                                   }
                               }
                           }
@@ -66,29 +66,29 @@ objects:
                                               def created
                                               def objectsFromTemplate
                                               def privateRepo = false
-                                              def repoHost = params.nexusRepo.split('/')[0]
-                                              def templatePath = "/tmp/workspace/${namespace}/${namespace}-nexus-jenkins-pipeline/tmpnexus${params.nexusBranch}/openshift"
+                                              def repoHost = params.buildRepo.split('/')[0]
+                                              def templatePath = "/tmp/workspace/${namespace}/${namespace}-nexus-jenkins-pipeline/tmpnexus${params.buildBranch}/deploy/openshift"
                                               sh "git config --global http.sslVerify false"
-                                              sh "rm -fr tmpnexus${params.nexusBranch}; mkdir -p tmpnexus${params.nexusBranch}"
-                                              dir ("tmpnexus${params.nexusBranch}") {
+                                              sh "rm -fr tmpnexus${params.buildBranch}; mkdir -p tmpnexus${params.nexusBranch}"
+                                              dir ("tmpnexus${params.buildBranch}") {
                                                   try {
                                                       withCredentials([string(credentialsId: "git-${repoHost}", variable: 'GIT_TOKEN')]) {
                                                           cloneProto = "https"
                                                           privateRepo = true
-                                                          echo "cloning ${params.nexusRepo} over https, using ${repoHost} token"
-                                                          try { git([ branch: "${params.nexusBranch}", url: "https://${GIT_TOKEN}@${params.nexusRepo}" ]) }
+                                                          echo "cloning ${params.buildRepo} over https, using ${repoHost} token"
+                                                          try { git([ branch: "${params.buildBranch}", url: "https://${GIT_TOKEN}@${params.buildRepo}" ]) }
                                                           catch(e2) {
-                                                              echo "Failed cloning ${params.nexusRepo}#${params.nexusBranch} - ${e2}"
+                                                              echo "Failed cloning ${params.buildRepo}#${params.buildBranch} - ${e2}"
                                                               throw e2
                                                           }
                                                       }
                                                   } catch(e) {
                                                       if (privateRepo != true) {
                                                           echo "caught ${e} - assuming no credentials required"
-                                                          echo "cloning ${params.nexusRepo} over http"
-                                                          try { git([ branch: "${params.nexusBranch}", url: "http://${params.nexusRepo}" ]) }
+                                                          echo "cloning ${params.buildRepo} over http"
+                                                          try { git([ branch: "${params.buildBranch}", url: "http://${params.buildRepo}" ]) }
                                                           catch(e2) {
-                                                              echo "Failed cloning ${params.nexusRepo}#${params.nexusBranch} - ${e2}"
+                                                              echo "Failed cloning ${params.buildRepo}#${params.buildBranch} - ${e2}"
                                                               throw e2
                                                           }
                                                       } else { throw e }
@@ -99,10 +99,10 @@ objects:
                                               }
                                               try { sh "test -d ${templatePath}" }
                                               catch (e) {
-                                                  echo "Could not find ./openshift in ${params.nexusRepo}#${params.nexusBranch}"
+                                                  echo "Could not find ./deploy/openshift in ${params.buildRepo}#${params.buildBranch}"
                                                   throw e
                                               }
-                                              echo "Processing Nexus:${params.nexusHash}, from ${repoHost}, tagging to ${params.nexusBranch}"
+                                              echo "Processing Nexus:${params.buildHash}, from ${repoHost}, tagging to ${params.buildBranch}"
                                               try {
                                                   echo " == Creating ImageStream =="
                                                   objectsFromTemplate = openshift.process("-f", "${templatePath}/imagestream.yaml")
@@ -115,14 +115,14 @@ objects:
                                                   if (privateRepo) {
                                                       withCredentials([string(credentialsId: "git-${repoHost}", variable: 'GIT_TOKEN')]) {
                                                           objectsFromTemplate = openshift.process("-f", "${templatePath}/build-with-secret.yaml", '-p', "GIT_DEPLOYMENT_TOKEN=${GIT_TOKEN}",
-                                                              '-p', "NEXUS_REPOSITORY_REF=${params.nexusHash}", '-p', "NEXUS_REPOSITORY_URL=${cloneProto}://${params.nexusRepo}")
+                                                              '-p', "NEXUS_REPOSITORY_REF=${params.buildHash}", '-p', "NEXUS_REPOSITORY_URL=${cloneProto}://${params.buildRepo}")
                                                       }
                                                   } else {
                                                       objectsFromTemplate = openshift.process("-f", "${templatePath}/build.yaml",
-                                                          '-p', "NEXUS_REPOSITORY_REF=${params.nexusHash}", '-p', "NEXUS_REPOSITORY_URL=${cloneProto}://${params.nexusRepo}")
+                                                          '-p', "NEXUS_REPOSITORY_REF=${params.buildHash}", '-p', "NEXUS_REPOSITORY_URL=${cloneProto}://${params.buildRepo}")
                                                   }
                                                   echo "The template will create ${objectsFromTemplate.size()} objects"
-                                                  for (o in objectsFromTemplate) { o.metadata.labels["${templateSel}"] = "${templateMark}-${params.nexusHash}" }
+                                                  for (o in objectsFromTemplate) { o.metadata.labels["${templateSel}"] = "${templateMark}-${params.buildHash}" }
                                                   created = openshift.apply(objectsFromTemplate)
                                                   created.withEach { echo "Created ${it.name()} from template with labels ${it.object().metadata.labels}" }
                                               } catch(e) { echo "In non-critical catch block while creating BuildConfigs - ${e}" }
@@ -130,15 +130,15 @@ objects:
                                                   echo " == Creating Secrets =="
                                                   objectsFromTemplate = openshift.process("-f", "${templatePath}/secret.yaml")
                                                   echo "The template will create ${objectsFromTemplate.size()} objects"
-                                                  for (o in objectsFromTemplate) { o.metadata.labels["${templateSel}"] = "${templateMark}-${params.nexusHash}" }
+                                                  for (o in objectsFromTemplate) { o.metadata.labels["${templateSel}"] = "${templateMark}-${params.buildHash}" }
                                                   created = openshift.create(objectsFromTemplate)
                                                   created.withEach { echo "Created ${it.name()} from template with labels ${it.object().metadata.labels}" }
                                               } catch(e) { echo "In non-critical catch block while creating Secret - ${e}" }
                                               echo " == Creating Demo =="
-                                              objectsFromTemplate = openshift.process("-f", "${templatePath}/run-ephemeral.yaml", '-p', "FRONTNAME=${frontName}-${params.nexusHash}",
-                                                  '-p', "NEXUS_IMAGE_TAG=${params.nexusHash}", '-p', "ROOT_DOMAIN=${params.nexusHash}.${params.rootDomain}")
+                                              objectsFromTemplate = openshift.process("-f", "${templatePath}/run-ephemeral.yaml", '-p', "FRONTNAME=${frontName}-${params.buildHash}",
+                                                  '-p', "NEXUS_IMAGE_TAG=${params.buildHash}", '-p', "ROOT_DOMAIN=${params.nexusHash}.${params.rootDomain}")
                                               echo "The template will create ${objectsFromTemplate.size()} objects"
-                                              for (o in objectsFromTemplate) { o.metadata.labels["${templateSel}"] = "${templateMark}-${params.nexusHash}" }
+                                              for (o in objectsFromTemplate) { o.metadata.labels["${templateSel}"] = "${templateMark}-${params.buildHash}" }
                                               created = openshift.create(objectsFromTemplate)
                                               created.withEach { echo "Created ${it.name()} from template with labels ${it.object().metadata.labels}" }
                                           }
@@ -158,8 +158,8 @@ objects:
                                   openshift.withProject() {
                                       try {
                                           timeout(120) {
-                                              echo "watching nexus-${params.nexusHash} docker image build"
-                                              def builds = openshift.selector("bc", [ name: "nexus-${params.nexusHash}" ]).related('builds')
+                                              echo "watching nexus-${params.buildHash} docker image build"
+                                              def builds = openshift.selector("bc", [ name: "nexus-${params.buildHash}" ]).related('builds')
                                               builds.untilEach(1) { return (it.object().status.phase == "Complete") }
                                           }
                                       } catch(e) {
@@ -182,15 +182,15 @@ objects:
                                               try {
                                                   sh """
                                                   oc login https://kubernetes.default.svc.cluster.local --certificate-authority=/var/run/secrets/kubernetes.io/serviceaccount/ca.crt --token=\$(cat /var/run/secrets/kubernetes.io/serviceaccount/token) > /dev/null 2>&1
-                                                  oc describe -n ${namespace} imagestreamtag nexus:${params.nexusHash} || exit 1
+                                                  oc describe -n ${namespace} imagestreamtag nexus:${params.buildHash} || exit 1
                                                   """
                                               } catch(e) {
                                                   echo "In catch block while looking for Nexus image - ${e}"
                                                   throw e
                                               }
                                               retry(2) {
-                                                  echo "watching nexus-${frontName}-${params.nexusHash} deployment rollout"
-                                                  def dc = openshift.selector("dc", [ name: "nexus-${frontName}-${params.nexusHash}" ]).related('pods')
+                                                  echo "watching nexus-${frontName}-${params.buildHash} deployment rollout"
+                                                  def dc = openshift.selector("dc", [ name: "nexus-${frontName}-${params.buildHash}" ]).related('pods')
                                                   dc.untilEach(1) { return (it.object().status.phase == "Running") }
                                               }
                                           }
@@ -213,7 +213,7 @@ objects:
                                               echo "waiting an additional 8 minutes for applications to finish starting up"
                                               sleep 480
                                               retry(3) {
-                                                  def nx = httpRequest ignoreSslErrors: true, url: "https://nexus.${params.nexusHash}.${params.rootDomain}", timeout: 30, httpMode: 'GET', validResponseCodes: '200:302,401'
+                                                  def nx = httpRequest ignoreSslErrors: true, url: "https://nexus.${params.buildHash}.${params.rootDomain}", timeout: 30, httpMode: 'GET', validResponseCodes: '200:302,401'
                                                   println("GET portal status: " + nx.status)
                                                   println("GET portal content: " + nx.content)
                                               }
@@ -230,7 +230,7 @@ objects:
                   stage('tag') {
                       steps {
                           script {
-                              if ("${params.nexusBranch}" == "${params.nexusHash}") { echo "skipping tag - source matches target" }
+                              if ("${params.buildBranch}" == "${params.buildHash}") { echo "skipping tag - source matches target" }
                               else {
                                   openshift.withCluster() {
                                       openshift.withProject() {
@@ -240,7 +240,7 @@ objects:
                                                   retry(3) {
                                                       sh """
                                                       oc login https://kubernetes.default.svc.cluster.local --certificate-authority=/var/run/secrets/kubernetes.io/serviceaccount/ca.crt --token=\$(cat /var/run/secrets/kubernetes.io/serviceaccount/token) > /dev/null 2>&1
-                                                      oc tag -n ${namespace} nexus:${params.nexusHash} nexus:${params.nexusBranch}
+                                                      oc tag -n ${namespace} nexus:${params.buildHash} nexus:${params.buildBranch}
                                                       """
                                                   }
                                               }
@@ -263,21 +263,21 @@ objects:
                                   def namespace   = "${openshift.project()}"
                                   def postJobName = "${namespace}/${namespace}-post-triggers-jenkins-pipeline"
                                   currentBuild.description = """
-                                  ${params.nexusRepo} ${params.nexusBranch} (try ${params.jobRetryCount}/${params.jobMaxRetry})
+                                  ${params.buildRepo} ${params.buildBranch} (try ${params.jobRetryCount}/${params.jobMaxRetry})
                                   ${gitCommitMsg}
                                   """.stripIndent()
-                                  echo "cleaning up assets for nexus-${params.nexusHash}"
-                                  sh "rm -fr /tmp/workspace/${namespace}/${namespace}-nexus-jenkins-pipeline/tmpnexus${params.nexusBranch}"
-                                  openshift.selector("all", [ "${templateSel}": "${templateMark}-${params.nexusHash}" ]).delete()
-                                  openshift.selector("secrets", [ "${templateSel}": "${templateMark}-${params.nexusHash}" ]).delete()
+                                  echo "cleaning up assets for nexus-${params.buildHash}"
+                                  sh "rm -fr /tmp/workspace/${namespace}/${namespace}-nexus-jenkins-pipeline/tmpnexus${params.buildBranch}"
+                                  openshift.selector("all", [ "${templateSel}": "${templateMark}-${params.buildHash}" ]).delete()
+                                  openshift.selector("secrets", [ "${templateSel}": "${templateMark}-${params.buildHash}" ]).delete()
                                   def jobParams = [
                                           [$class: 'StringParameterValue', name: "jobMaxRetry", value: params.jobMaxRetry],
                                           [$class: 'StringParameterValue', name: "jobRetryCount", value: params.jobRetryCount],
                                           [$class: 'StringParameterValue', name: "jobStatus", value: currentBuild.currentResult],
-                                          [$class: 'StringParameterValue', name: "sourceBranch", value: params.nexusBranch],
+                                          [$class: 'StringParameterValue', name: "sourceBranch", value: params.buildBranch],
                                           [$class: 'StringParameterValue', name: "sourceComponent", value: "nexus"],
-                                          [$class: 'StringParameterValue', name: "sourceRef", value: params.nexusHash],
-                                          [$class: 'StringParameterValue', name: "sourceRepo", value: params.nexusRepo]
+                                          [$class: 'StringParameterValue', name: "sourceRef", value: params.buildHash],
+                                          [$class: 'StringParameterValue', name: "sourceRepo", value: params.buildRepo]
                                       ]
                                   try { build job: postJobName, parameters: jobParams, propagate: false, wait: false }
                                   catch(e) { echo "caught ${e} starting Job post-process" }
@@ -293,11 +293,15 @@ objects:
           }
       type: JenkinsPipeline
 parameters:
+- name: GIT_REPOSITORY
+  description: Git Repostory URL, Relative to GIT_SOURCE_HOST
+  displayName: Git Repository
+  value: faust64/docker-nexus.git
 - name: GIT_SOURCE_HOST
   description: Git FQDN we would build images from
-  displayName: Git
+  displayName: Git Server
   value: github.com
 - name: OPENSHIFT_ROUTED_DOMAIN
   description: OpenShift Routers-served Root Domain
   displayName: CI Router Domain
-  value: ci.dev.wopla.io
+  value: ci.apps.intra.unetresgrossebite.com

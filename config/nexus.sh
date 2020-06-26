@@ -39,7 +39,6 @@ if ! test -s "$NEXUS_TRUST_STORE"; then
 fi
 
 echo Starting Nexus
-echo "$(date) - LDAP Enabled: $LDAP_ENABLED"
 
 if ! test -s $NEXUS_DATA/current_local_password; then
     echo admin123 >$NEXUS_DATA/current_local_password
@@ -47,5 +46,9 @@ fi
 
 echo Executing provision.sh
 /usr/local/bin/provision.sh &
+
+unset OPENLDAP_BIND_DN_PREFIX OPENLDAP_BIND_PW OPENLDAP_DOMAIN \
+    OPENLDAP_HOST OPENLDAP_PROTO OPENLDAP_USERS_OBJECTCLASS \
+    OPENLDAP_BASE OPENLDAP_PORT
 
 exec $@

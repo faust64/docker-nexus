@@ -4,6 +4,23 @@ if test "$DEBUG"; then
     set -x
 fi
 
+OPENLDAP_BIND_DN_PREFIX="${OPENLDAP_BIND_DN_PREFIX:-cn=nexus,ou=services}"
+OPENLDAP_BIND_PW="${OPENLDAP_BIND_PW:-}"
+OPENLDAP_DOMAIN=${OPENLDAP_DOMAIN:-demo.local}
+OPENLDAP_HOST=${OPENLDAP_HOST:-127.0.0.1}
+OPENLDAP_PROTO=${OPENLDAP_PROTO:-ldap}
+OPENLDAP_USERS_OBJECTCLASS=${OPENLDAP_USERS_OBJECTCLASS:-inetOrgPerson}
+if test -z "$OPENLDAP_BASE"; then
+    OPENLDAP_BASE=`echo "dc=$OPENLDAP_DOMAIN" | sed 's|\.|,dc=|g'`
+fi
+if test -z "$OPENLDAP_GROUP_MAPPINGS"; then
+    OPENLDAP_GROUP_MAPPINGS="Admins,nx-admin All,nx-anonymous"
+fi
+if test -z "$OPENLDAP_PORT" -a "$OPENLDAP_PROTO" = ldaps; then
+    OPENLDAP_PORT=636
+elif test -z "$OPENLDAP_PORT"; then
+    OPENLDAP_PORT=389
+fi
 if ! test -s $NEXUS_DATA/current_local_password -o \
 	-s $NEXUS_DATA/admin.password; then
     echo "[ERR] Current admin password not found."
@@ -85,114 +102,106 @@ cat <<EOF
 Executing on $nexus_host
 EOF
 
-#if test "$NEXUS_BASE_URL"; then
-#    echo " -- Setting Base URL: $NEXUS_BASE_URL"
-#    baseUrlArg=$(jq -n -c --arg value "$NEXUS_BASE_URL" '{base_url: $value}')
-#    addAndRunScript baseUrl resources/conf/setup_base_url.groovy "\$baseUrlArg"
-#fi
-#if test "$USER_AGENT"; then
-#    echo " -- Setting User Agent: $USER_AGENT"
-#    userAgentArg=$(jq -n -c --arg value "$USER_AGENT" '{user_agent: $value}')
-#    addAndRunScript userAgent resources/conf/setup_user_agent.groovy "\$userAgentArg"
-#fi
 #if test "$NEXUS_PROXY_HOST"; then
 #    NEXUS_PROXY_PORT=${NEXUS_PROXY_HOST:-3128}
 #    echo " -- Setting Proxy Host: $NEXUS_PROXY_HOST:$NEXUS_PROXY_PORT"
 #    remoteProxyArg=$(jq -n -c --arg host "$NEXUS_PROXY_HOST" --arg port "$NEXUS_PROXY_PORT" '{with_http_proxy: "true", http_proxy_host: $host, http_proxy_port: $port}')
 #    addAndRunScript remoteProxy resources/conf/setup_http_proxy.groovy "\$remoteProxyArg"
 #fi
-#if test "$LDAP_ENABLED" = true; then
-#    LDAP_NAME=${LDAP_NAME:-'LDAP-Auth'}
-#    test -z "$LDAP_URI" && LDAP_URI="ldap://localhost/"
-#    LDAP_PROTO=`echo "$LDAP_URI" | cut -d: -f1`
-#    test "$LDAP_PROTO" = ldap -o "$LDAP_PROTO" = ldaps || LDAP_PROTO=ldap
-#    LDAP_HOST=`echo "$LDAP_URI" | sed 's|^\([ldaps]*://\)\{0,1\}\([^/]*\)[/]*.*|\2|'`
-#    if echo "$LDAP_HOST" | grep : >/dev/null; then
-#	LDAP_PORT=`echo "$LDAP_HOST" | cut -d: -f2`
-#	LDAP_HOST=`echo "$LDAP_HOST" | cut -d: -f1`
-#    elif test "$LDAP_PROTO" = ldaps; then
-#	LDAP_PORT=636
-#    else
-#	LDAP_PORT=389
-#    fi
-#    LDAP_USERS=${LDAP_USERS:-'ou=users'}
-#    LDAP_GROUPS=${LDAP_GROUPS:-'ou=groups'}
-#    LDAP_GROUPS_AS_ROLES=${LDAP_GROUPS_AS_ROLES:-'true'}
-#    LDAP_BASE=${LDAP_BASE:-'dc=demo,dc=local'}
-#    LDAP_MAP_GROUP_AS_ROLES=${LDAP_MAP_GROUP_AS_ROLES:-'true'}
-#    LDAP_AUTH_SCHEME=${LDAP_AUTH_SCHEME:-'simple'}
-#    LDAP_BIND_PASSWORD=${LDAP_BIND_PASSWORD:-'secret'}
-#    LDAP_BIND_DN=${LDAP_BIND_DN:-'cn=admin,dc=demo,dc=local'}
-#    LDAP_USER_EMAIL_ATTRIBUTE=${LDAP_USER_EMAIL_ATTRIBUTE:-'mail'}
-#    LDAP_GROUP_ID_ATTRIBUTE=${LDAP_GROUP_ID_ATTRIBUTE:-'cn'}
-#    LDAP_GROUP_MEMBER_ATTRIBUTE=${LDAP_GROUP_MEMBER_ATTRIBUTE:-'member'}
-#    LDAP_GROUP_OBJECT_CLASS=${LDAP_GROUP_OBJECT_CLASS:-'groupOfNames'}
-#    LDAP_PREFERRED_PASSWORD_ENCODING=${LDAP_PREFERRED_PASSWORD_ENCODING:-'crypt'}
-#    LDAP_USER_ID_ATTRIBUTE=${LDAP_USER_ID_ATTRIBUTE:-'uid'}
-#    LDAP_USER_PASSWORD_ATTRIBUTE=${LDAP_USER_PASSWORD_ATTRIBUTE:-'userPassword'}
-#    LDAP_USER_OBJECT_CLASS=${LDAP_USER_OBJECT_CLASS:-'inetOrgPerson'}
-#    LDAP_USER_REAL_NAME_ATTRIBUTE=${LDAP_USER_REAL_NAME_ATTRIBUTE:-'cn'}
-#    LDAP_GROUP_MEMBER_FORMAT='${dn}'
-#
-#    LDAP_USER_GROUP_CONFIG=$(jq -n -c \
-#	    --arg name "$LDAP_NAME" \
-#	    --arg map_groups_as_roles "$LDAP_MAP_GROUP_AS_ROLES" \
-#	    --arg protocol "$LDAP_PROTO" \
-#	    --arg host "$LDAP_HOST" \
-#	    --arg port "$LDAP_PORT" \
-#	    --arg searchBase "$LDAP_BASE" \
-#	    --arg auth "$LDAP_AUTH_SCHEME" \
-#	    --arg systemPassword "$LDAP_BIND_PASSWORD" \
-#	    --arg systemUsername "$LDAP_BIND_DN" \
-#	    --arg emailAddressAttribute "$LDAP_USER_EMAIL_ATTRIBUTE" \
-#	    --arg ldapGroupsAsRoles "$LDAP_GROUPS_AS_ROLES" \
-#	    --arg groupBaseDn "$LDAP_GROUPS" \
-#	    --arg groupIdAttribute "$LDAP_GROUP_ID_ATTRIBUTE" \
-#	    --arg groupMemberAttribute "$LDAP_GROUP_MEMBER_ATTRIBUTE" \
-#	    --arg groupMemberFormat "$LDAP_GROUP_MEMBER_FORMAT" \
-#	    --arg groupObjectClass "$LDAP_GROUP_OBJECT_CLASS" \
-#	    --arg userIdAttribute "$LDAP_USER_ID_ATTRIBUTE" \
-#	    --arg userPasswordAttribute "$LDAP_USER_PASSWORD_ATTRIBUTE" \
-#	    --arg userObjectClass "$LDAP_USER_OBJECT_CLASS" \
-#	    --arg userBaseDn "$LDAP_USERS" \
-#	    --arg userRealNameAttribute "$LDAP_USER_REAL_NAME_ATTRIBUTE" \
-#	    '{name: $name, map_groups_as_roles: $map_groups_as_roles, protocol: $protocol, host: $host, port: $port, searchBase: $searchBase, auth: $auth, systemPassword: $systemPassword, systemUsername: $systemUsername, emailAddressAttribute: $emailAddressAttribute, ldapGroupsAsRoles: $ldapGroupsAsRoles, groupBaseDn: $groupBaseDn, groupIdAttribute: $groupIdAttribute, groupMemberAttribute: $groupMemberAttribute, groupMemberFormat: $groupMemberFormat, groupObjectClass: $groupObjectClass, userIdAttribute: $userIdAttribute, userPasswordAttribute: $userPasswordAttribute, userObjectClass: $userObjectClass, userBaseDn: $userBaseDn, userRealNameAttribute: $userRealNameAttribute}'
-#	)
-#    addAndRunScript ldapConfig resources/conf/ldapconfig.groovy "\$LDAP_USER_GROUP_CONFIG"
-#    if test "$NEXUS_CUSTOM_DEPLOY_ROLE$NEXUS_CUSTOM_DEV_ROLE"; then
-#	echo " -- Creating LDAP roles and mappings..."
-#	if test "$NEXUS_CUSTOM_DEPLOY_ROLE"; then
-#	    NEXUS_DEPLOY_ROLE_CONFIG=$(jq -n -c \
-#		    --arg id "$NEXUS_CUSTOM_DEPLOY_ROLE" \
-#		    --arg name "$NEXUS_CUSTOM_DEPLOY_ROLE" \
-#		    '{id: $id, name: $name, description: "Deployment_Role", privileges: ["nx-ldap-all", "nx-roles-all"], roles: ["nx-admin"]}'
-#		)
-#	    addAndRunScript insertRole resources/conf/insertrole.groovy "\$NEXUS_DEPLOY_ROLE_CONFIG"
-#	fi
-#	if test -n "$NEXUS_CUSTOM_DEV_ROLE"; then
-#	    NEXUS_DEVELOP_ROLE_CONFIG=$(jq -n -c \
-#		    --arg id "$NEXUS_CUSTOM_DEVELOP_ROLE" \
-#		    --arg name "$NEXUS_CUSTOM_DEVELOP_ROLE" \
-#		    '{id: $id, name: $name, description: "Developer_Role", privileges: ["nx-roles-update", "nx-ldap-update"], roles: ["nx-admin", "nx-anonymous"]}'
-#		)
-#	    addAndRunScript insertRole resources/conf/insertrole.groovy "\$NEXUS_DEVELOP_ROLE_CONFIG"
-#	fi
-#    fi
-#fi
-if test "$NEXUS_JENKINS_ARTIFACTS_ACCOUNT" -a "$NEXUS_ARTIFACTS_SERVICE_PASSWORD"; then
+
+if test "$OPENLDAP_BIND_PW" -a ! -s $NEXUS_DATA/ldap.configured; then
+    if (
+	    echo "{\"id\":\"\",\"name\":\"Kube\","
+	    echo "\"protocol\":\"$OPENLDAP_PROTO\","
+	    echo "\"host\":\"$OPENLDAP_HOST\","
+	    echo "\"port\":\"$OPENLDAP_PORT\","
+	    echo "\"searchBase\":\"$OPENLDAP_BASE\","
+	    echo '"authScheme":"simple","userBaseDn":"ou=users",'
+	    echo "\"authUsername\":\"$OPENLDAP_BIND_DN_PREFIX,$OPENLDAP_BASE\","
+	    echo '"userSubtree":true,"userIdAttribute":"uid",'
+	    echo "\"authPassword\":\"$OPENLDAP_BIND_PW\","
+	    echo "\"connectionTimeout\":\"30\","
+	    echo "\"ldapGroupsAsRoles\":true,"
+	    echo "\"connectionRetryDelay\":\"300\","
+	    echo "\"maxIncidentsCount\":\"3\","
+	    echo '"template":"Generic Ldap Server",'
+	    echo "\"userObjectClass\":\"$OPENLDAP_USERS_OBJECTCLASS\","
+	    echo '"userLdapFilter":"(!(pwdAccountLockedTime=*))",'
+	    echo '"userRealNameAttribute":"cn",'
+	    echo '"userEmailAddressAttribute":"mail",'
+	    echo '"userPasswordAttribute":"","groupType":"dynamic",'
+	    echo '"userMemberOfAttribute":"memberOf",'
+	    echo '"connectionTimeoutSeconds":"30",'
+	    echo '"connectionRetryDelaySeconds":"300"}'
+	) | curl --header 'Content-Type: application/json' \
+	    --header 'Accept: application/json' -X POST -u "admin:$password" \
+	    -s -o /dev/null -w '%{http_code}' \
+	    $nexus_host/service/rest/beta/security/ldap -d@- \
+	  | grep ^201 >/dev/null; then
+	echo successfully configured LDAP backend
+	echo "$(date +%s) initialized" >$NEXUS_DATA/ldap.configured
+    else
+	echo failed provisionning LDAP auth backend
+    fi
+    for mapping in $OPENLDAP_GROUP_MAPPINGS
+    do
+	eval `echo $mapping | sed 's|^\([^,]*\),\(.*\)|group=\1 roles="\2"|'`
+	jsroles=`echo "$roles" | sed 's|,|","|g'`
+	if ! grep "^[0-9]* $mapping" $NEXUS_DATA/ldap.configured \
+		>/dev/null 2>&1; then
+	    if (
+		    echo '{"version":"","source":"LDAP",'
+		    echo "\"id\":\"$group\",\"name\":\"ldap-$group-mapping\","
+		    echo "\"description\":\"LDAP $group\",\"privileges\":[],"
+		    echo "\"roles\":[\"$jsroles\"]}"
+		) | curl --header 'Content-Type: application/json' \
+		    --header 'Accept: application/json' -X POST \
+		    -u "admin:$password" -s -o /dev/null -w '%{http_code}' \
+		    $nexus_host/service/rest/beta/security/roles -d@- \
+		  | grep ^200 >/dev/null; then
+		echo successfully mapped LDAP group $group privileges
+		echo "$(date +%s) $mapping" >>$NEXUS_DATA/ldap.configured
+	    else
+		echo failed provisionning LDAP group $group privileges
+	    fi
+	fi
+    done
+fi
+if ! grep '^custom-deployer ' $NEXUS_DATA/roles.provisionned \
+	>/dev/null 2>&1; then
+    if (
+	    echo '{"version":"","source":"default","id":"custom-deployer",'
+	    echo '"name":"custom-deployer","description":"Deployment Role",'
+	    echo '"privileges":["nx-repository-view-*-*-*","nx-search-read",'
+	    echo '"nx-apikey-all"],"roles":[]}'
+	) | curl --header 'Content-Type: application/json' \
+	    --header 'Accept: application/json' -X POST -u "admin:$password" \
+	    -s -o /dev/null -w '%{http_code}' \
+	    $nexus_host/service/rest/beta/security/roles -d@- \
+	  | grep ^200 >/dev/null; then
+	echo successfully installed deployer role
+	echo "deployer $(date +%s)" >>$NEXUS_DATA/roles.provisionned
+    else
+	echo failed provisionning deployer role
+    fi
+fi
+if test "$NEXUS_JENKINS_ARTIFACTS_ACCOUNT" \
+	-a "$NEXUS_ARTIFACTS_SERVICE_PASSWORD"; then
     if ! grep $NEXUS_JENKINS_ARTIFACTS_ACCOUNT \
 	    $NEXUS_DATA/accounts.provisionned >/dev/null 2>&1; then
 	echo " -- Creating Jenkins ARTIFACTS service user..."
 	if (
 		echo "{\"userId\":\"$NEXUS_JENKINS_ARTIFACTS_ACCOUNT\","
 		echo '"status":"active","lastName":"Jenkins Service Account",'
-		echo '"firstName":"Artifacts","emailAddress":"artifacts@example.com",'
+		echo '"firstName":"Artifacts","emailAddress":'
+		echo '"artifacts@example.com","roles":["nx-admin"],'
 		echo "\"password\":\"$NEXUS_ARTIFACTS_SERVICE_PASSWORD\","
-		echo '"privileges":["nx-component-upload"],"roles":["nx-admin"]}'
+		echo '"privileges":["nx-component-upload"]}'
 	    ) | curl --header 'Content-Type: application/json' \
-		--header 'Accept: application/json' -X POST -u "admin:$password" \
-		-s -o /dev/null -w '%{http_code}' \
-		$nexus_host/service/rest/beta/security/users -d@- | grep ^200 >/dev/null; then
+		--header 'Accept: application/json' -X POST \
+		-u "admin:$password" -s -o /dev/null -w '%{http_code}' \
+		$nexus_host/service/rest/beta/security/users -d@- \
+	      | grep ^200 >/dev/null; then
 	    echo successfully created user $NEXUS_JENKINS_ARTIFACTS_ACCOUNT
 	    echo $NEXUS_JENKINS_ARTIFACTS_ACCOUNT >>$NEXUS_DATA/accounts.provisionned
 	else
@@ -209,23 +218,22 @@ if test "$NEXUS_JENKINS_DEPLOYER_ACCOUNT" -a "$NEXUS_DEPLOYER_SERVICE_PASSWORD";
 	if (
 		echo "{\"userId\":\"$NEXUS_JENKINS_DEPLOYER_ACCOUNT\","
 		echo '"status":"active","lastName":"Jenkins Service Account",'
-		echo '"firstName":"Deployer","emailAddress":"deployer@example.com",'
+		echo '"firstName":"Deployer","emailAddress":'
+		echo '"deployer@example.com","privileges":[],'
 		echo "\"password\":\"$NEXUS_DEPLOYER_SERVICE_PASSWORD\","
-		echo '"privileges":["nx-search-read","nx-repository-view-*-*-read",'
-		echo '"nx-repository-view-*-*-browse","nx-repository-view-*-*-add",'
-		echo '"nx-repository-view-*-*-edit","nx-apikey-all"],'
-		echo '"roles":["nx-admin"]}'
+		echo '"roles":["custom-deployer"]}'
 	    ) | curl --header 'Content-Type: application/json' \
-		--header 'Accept: application/json' -X POST -u "admin:$password" \
-		-s -o /dev/null -w '%{http_code}' \
-		$nexus_host/service/rest/beta/security/users -d@- | grep ^200 >/dev/null; then
-	    echo successfully created user $NEXUS_JENKINS_ARTIFACTS_ACCOUNT
-	    echo $NEXUS_JENKINS_ARTIFACTS_ACCOUNT >>$NEXUS_DATA/accounts.provisionned
+		--header 'Accept: application/json' -X POST \
+		-u "admin:$password" -s -o /dev/null -w '%{http_code}' \
+		$nexus_host/service/rest/beta/security/users -d@- \
+	      | grep ^200 >/dev/null; then
+	    echo successfully created user $NEXUS_JENKINS_DEPLOYER_ACCOUNT
+	    echo $NEXUS_JENKINS_DEPLOYER_ACCOUNT >>$NEXUS_DATA/accounts.provisionned
 	else
-	    echo failed provisionning user $NEXUS_JENKINS_ARTIFACTS_ACCOUNT
+	    echo failed provisionning user $NEXUS_JENKINS_DEPLOYER_ACCOUNT
 	fi
     else
-	echo user $NEXUS_JENKINS_ARTIFACTS_ACCOUNT already povisionned
+	echo user $NEXUS_JENKINS_DEPLOYER_ACCOUNT already povisionned
     fi
 fi
 if test "$NEXUS_ADMIN_PASSWORD"; then

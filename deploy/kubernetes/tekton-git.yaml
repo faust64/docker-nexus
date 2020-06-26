@@ -1,0 +1,12 @@
+apiVersion: tekton.dev/v1alpha1
+kind: PipelineResource
+metadata:
+  name: nexus-git
+  namespace: ci
+spec:
+  params:
+  - name: url
+    value: git@gitlab.com:synacksynack/opsperator/docker-nexus
+  - name: revision
+    value: master
+  type: git

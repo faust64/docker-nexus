@@ -2,25 +2,16 @@ apiVersion: v1
 kind: Template
 labels:
   app: nexus
-  template: nexus-persistent
+  template: nexus-ephemeral
 metadata:
   annotations:
-    description: Nexus - persistent
+    description: Nexus - ephemeral
       see https://github.com/faust64/docker-nexus
     iconClass: icon-openshift
     openshift.io/display-name: Nexus
     tags: nexus
-  name: nexus-persistent
+  name: nexus-ephemeral
 objects:
-- apiVersion: v1
-  kind: PersistentVolumeClaim
-  metadata:
-    name: nexus-${FRONTNAME}
-  spec:
-    accessModes: [ ReadWriteOnce ]
-    resources:
-      requests:
-        storage: ${NEXUS_VOLUME_CAPACITY}
 - apiVersion: v1
   kind: DeploymentConfig
   metadata:
@@ -46,10 +37,6 @@ objects:
             value: /
           - name: HOME
             value: /nexus-data
-          - name: NEXUS_PROXY_HOST
-            value: "${PROXY_HOST}"
-          - name: NEXUS_PROXY_PORT
-            value: "${PROXY_PORT}"
           - name: INSTALL4J_ADD_VM_PARAMS
             value: ${JAVA_ARGS} -Djava.util.prefs.userRoot=/nexus-data/javaprefs
           - name: NEXUS_ADMIN_PASSWORD
@@ -128,9 +115,8 @@ objects:
         volumes:
         - emptyDir: {}
           name: logs
-        - name: data
-          persistentVolumeClaim:
-            claimName: nexus-${FRONTNAME}
+        - emptyDir: {}
+          name: data
     test: false
     triggers:
     - type: ConfigChange
@@ -140,7 +126,7 @@ objects:
         - nexus
         from:
           kind: ImageStreamTag
-          name: ${NEXUS_IMAGE_FRONTNAME}:${NEXUS_IMAGE_TAG}
+          name: nexus:${NEXUS_IMAGE_TAG}
       type: ImageChange
 - apiVersion: v1
   kind: Service
@@ -194,26 +180,13 @@ parameters:
   displayName: Nexus Memory Request
   name: MEMORY_REQUEST
   value: 3800Mi
-- name: NEXUS_IMAGE_FRONTNAME
-  description: The name assigned to ImageStream object defined in corresponding template
-  displayName: Name
-  required: true
-  value: nexus
 - name: NEXUS_IMAGE_TAG
   description: The ImageStreamTag we should pull images from
   displayName: Tag
   required: true
   value: master
-- description: Taille du volume.
-  displayName: Volume capacity
-  name: NEXUS_VOLUME_CAPACITY
-  value: 42Gi
 - name: ROOT_DOMAIN
   description: OpenShift Root Domain
   displayName: OpenShift Root Domain
   required: true
   value: demo.local
-- name: PROXY_HOST
-  value: squid.example.com
-- name: PROXY_PORT
-  value: "3128"

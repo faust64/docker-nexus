@@ -1,7 +1,7 @@
 #!/bin/sh -e
 
 DOCKERFILE_PATH=""
-IMAGE_NAME=ci/nexus
+IMAGE_NAME=opsperator/nexus
 
 trap "rm -f $DOCKERFILE_PATH.version" INT QUIT EXIT
 

@@ -1,0 +1,18 @@
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: nexus-kube
+  namespace: ci
+spec:
+  rules:
+  - host: nexus.ci.apps.intra.unetresgrossebite.com
+    http:
+      paths:
+      - backend:
+          serviceName: nexus-kube
+          servicePort: 8081
+        path: /
+  tls:
+  - hosts:
+    - nexus.ci.apps.intra.unetresgrossebite.com
+    secretName: nexus-kube-tls

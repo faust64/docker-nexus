@@ -46,6 +46,10 @@ objects:
             value: /
           - name: HOME
             value: /nexus-data
+          - name: NEXUS_PROXY_HOST
+            value: "${PROXY_HOST}"
+          - name: NEXUS_PROXY_PORT
+            value: "${PROXY_PORT}"
           - name: INSTALL4J_ADD_VM_PARAMS
             value: ${JAVA_ARGS} -Djava.util.prefs.userRoot=/nexus-data/javaprefs
           - name: NEXUS_ADMIN_PASSWORD
@@ -136,7 +140,7 @@ objects:
         - nexus
         from:
           kind: ImageStreamTag
-          name: ${NEXUS_IMAGE_FRONTNAME}:${NEXUS_IMAGE_TAG}
+          name: nexus:${NEXUS_IMAGE_TAG}
       type: ImageChange
 - apiVersion: v1
   kind: Service
@@ -190,11 +194,6 @@ parameters:
   displayName: Nexus Memory Request
   name: MEMORY_REQUEST
   value: 3800Mi
-- name: NEXUS_IMAGE_FRONTNAME
-  description: The name assigned to ImageStream object defined in corresponding template
-  displayName: Name
-  required: true
-  value: nexus
 - name: NEXUS_IMAGE_TAG
   description: The ImageStreamTag we should pull images from
   displayName: Tag
@@ -209,3 +208,7 @@ parameters:
   displayName: OpenShift Root Domain
   required: true
   value: demo.local
+- name: PROXY_HOST
+  value: squid.example.com
+- name: PROXY_PORT
+  value: "3128"

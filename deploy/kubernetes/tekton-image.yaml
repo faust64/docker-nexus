@@ -1,0 +1,10 @@
+apiVersion: tekton.dev/v1alpha1
+kind: PipelineResource
+metadata:
+  name: nexus-image
+  namespace: ci
+spec:
+  params:
+  - name: url
+    value: registry.registry.svc.cluster.local:5000/ci/nexus:master
+  type: image

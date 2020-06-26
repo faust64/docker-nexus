@@ -1,0 +1,134 @@
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: nexus-kube
+  namespace: ci
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 50Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nexus-kube
+  namespace: ci
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      name: nexus-kube
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        name: nexus-kube
+    spec:
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: name
+                operator: In
+                values:
+                - nexus-kube
+            topologyKey: kubernetes.io/hostname
+      containers:
+      - env:
+        - name: CONTEXT_PATH
+          value: /
+        - name: HOME
+          value: /nexus-data
+        - name: INSTALL4J_ADD_VM_PARAMS
+          value: -Xms1400m -Xmx1400m -XX:MaxDirectMemorySize=2g -Djava.util.prefs.userRoot=/nexus-data/javaprefs
+        - name: LDAP_ENABLED
+          value: "false"
+        - name: NEXUS_ADMIN_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: admin-password
+              name: nexus-kube-admin
+        - name: NEXUS_ARTIFACTS_SERVICE_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: password
+              name: nexus-kube-artifacts
+        - name: NEXUS_DEPLOYER_SERVICE_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: password
+              name: nexus-kube-deployer
+        - name: NEXUS_JENKINS_ARTIFACTS_ACCOUNT
+          valueFrom:
+            secretKeyRef:
+              key: username
+              name: nexus-kube-artifacts
+        - name: NEXUS_JENKINS_DEPLOYER_ACCOUNT
+          valueFrom:
+            secretKeyRef:
+              key: username
+              name: nexus-kube-deployer
+        - name: TZ
+          value: Europe/Paris
+        image: registry.registry.svc.cluster.local:5000/ci/nexus:master
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          exec:
+            command:
+            - sh
+            - -c
+            - |
+              reply=`curl -s -o /dev/null -w %{http_code} "http://127.0.0.1:8081/static/css/nexus-content.css"`; \
+              if test "$reply" -lt 200 -o "$reply" -ge 400; then \
+                  exit 1; \
+              elif ! ls /nexus-data; then \
+                  exit 2; \
+              fi
+          failureThreshold: 20
+          initialDelaySeconds: 180
+          periodSeconds: 30
+          successThreshold: 1
+          timeoutSeconds: 1
+        name: nexus
+        ports:
+        - containerPort: 8081
+          protocol: TCP
+        readinessProbe:
+          failureThreshold: 20
+          httpGet:
+            path: /static/css/nexus-content.css
+            port: 8081
+            scheme: HTTP
+          initialDelaySeconds: 180
+          periodSeconds: 30
+          successThreshold: 1
+          timeoutSeconds: 1
+        resources:
+          limits:
+            cpu: 500m
+            memory: 4200Mi
+          requests:
+            cpu: 200m
+            memory: 3800Mi
+        volumeMounts:
+        - mountPath: /nexus-data
+          name: data
+        - mountPath: /nexus-data/log
+          name: logs
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext:
+        runAsUser: 1000
+      volumes:
+      - emptyDir: {}
+        name: logs
+      - name: data
+        persistentVolumeClaim:
+          claimName: nexus-kube

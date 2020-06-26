@@ -1,0 +1,17 @@
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  name: nexus-1
+  namespace: ci
+spec:
+  pipelineRef:
+    name: docker-build
+  resources:
+  - name: app-git
+    resourceRef:
+      name: nexus-git
+  - name: app-image
+    resourceRef:
+      name: nexus-image
+  serviceAccountName: tkn-ci
+  timeout: 1h0m0s
