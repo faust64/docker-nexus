@@ -1,10 +1,10 @@
-FROM sonatype/nexus3:3.24.0
+FROM sonatype/nexus3:3.26.1
 
 # Nexus Repository Manager image for OpenShift Origin
 
 ENV DI_REPO=https://github.com/Yelp/dumb-init/releases/download \
     DI_VERSION=1.2.2 \
-    NEXUS_VERSION=3.24.0
+    NEXUS_VERSION=3.26.1
 
 LABEL io.k8s.description="Nexus Repository Manager for OpenShift." \
       io.k8s.display-name="Nexus3 ${NEXUS_VERSION}" \

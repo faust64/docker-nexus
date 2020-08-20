@@ -11,10 +11,10 @@ docker_build_with_version()
     DOCKERFILE_PATH=$(perl -MCwd -e 'print Cwd::abs_path shift' $dockerfile)
     cp $DOCKERFILE_PATH "$DOCKERFILE_PATH.version"
     git_version=$(git rev-parse --short HEAD)
-    echo "LABEL io.openshift.builder-version=\"$git_version\"" >>"$dockerfile.version"
-    docker build -t $IMAGE_NAME -f "$dockerfile.version" .
+    echo "LABEL io.openshift.builder-version=\"$git_version\"" >>"$DOCKERFILE_PATH.version"
+    docker build -t $IMAGE_NAME -f "$DOCKERFILE_PATH.version" .
     if test "$SKIP_SQUASH" != 1; then
-	squash "$dockerfile.version"
+	squash "$DOCKERFILE_PATH.version"
     fi
     rm -f "$DOCKERFILE_PATH.version"
 }

@@ -29,7 +29,7 @@ run:
 kubebuild: kubecheck
 	@@for f in image git task pipeline pipelinerun; \
 	    do \
-		kubectl apply -f deploy/kubernetes/$$f.yaml; \
+		kubectl apply -f deploy/kubernetes/tekton-$$f.yaml; \
 	    done
 
 .PHONY: kubecheck
