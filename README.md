@@ -1,5 +1,8 @@
 # Nexus
 
+WARNING: this repository is no longer maintained! As it was migrated to GitLab:
+https://gitlab.com/synacksynack/opsperator/docker-nexus
+
 (historically based on https://github.com/Accenture/adop-nexus)
 
 Build with:
@@ -32,7 +35,7 @@ initialization by passing `-e VAR=VALUE` to the Docker `run` command.
 |  `NEXUS_PROMETHEUS_SERVICE_PASSWORD` | Nexus Prometheus Password        | undef                                                       |
 |  `NEXUS_REPOSITORIES`                | Repositories to Provision        | undef                                                       |
 |  `OPENLDAP_BASE`                     | OpenLDAP Base                    | seds `OPENLDAP_DOMAIN`, default produces `dc=demo,dc=local` |
-|  `OPENLDAP_BIND_DN_RREFIX`           | OpenLDAP Bind DN Prefix          | `cn=whitepages,ou=services`                                 |
+|  `OPENLDAP_BIND_DN_RREFIX`           | OpenLDAP Bind DN Prefix          | `cn=nexus,ou=service`                                       |
 |  `OPENLDAP_BIND_PW`                  | OpenLDAP Bind Password           | `secret`                                                    |
 |  `OPENLDAP_DOMAIN`                   | OpenLDAP Domain Name             | `demo.local`                                                |
 |  `OPENLDAP_GROUP_MAPPINGS`           | Maps LDAP Group to Nexus Role    | `Admins,nx-admin All,nx-anonymous`                          |
